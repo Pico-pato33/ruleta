@@ -189,6 +189,8 @@ summary{color:var(--mut);cursor:pointer;padding:6px 0}
   .big{font-size:24px;margin:8px 0 4px}
   .btn.yes,.btn.no{padding:12px;font-size:20px}
 }
+.sheet{position:relative}
+.xclose{position:absolute;top:12px;right:12px;width:38px;height:38px;border:0;border-radius:12px;background:var(--card2);color:var(--mut);font-size:17px;z-index:1}
 .rep{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:999px;background:var(--acc);color:#1b1630;font-weight:700;animation:pop .4s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
@@ -559,13 +561,18 @@ function repeatInfo(entry){
 function setRound(entry,out){const r=(S.bot.rounds||[]).find(x=>x.log===entry.id);if(r)r.out=out}
 function askCumple(res,entry){
   openModal(sh=>{
-    sh.innerHTML=`<div class="center">${resChips(res)}${repeatInfo(entry)}<h2 class="big">¿Se cumple?</h2>
+    sh.innerHTML=`<button class="xclose" aria-label="Quitar">✕</button><div class="center" style="padding-top:22px">${resChips(res)}${repeatInfo(entry)}<h2 class="big">¿Se cumple?</h2>
       <div class="row"><button class="btn yes">Sí</button><button class="btn no">No</button></div></div>`;
     $('.yes',sh).onclick=()=>{
       S.bot.done++;entry.out='✅ Cumplido';setRound(entry,'si');persist();renderLog();renderScore();
       sfx.yes();vibrate(30);closeModal();
     };
     $('.no',sh).onclick=()=>{sfx.no();vibrate([30,40,30]);askWho(res,entry)};
+    // ✕: quita esta pareja sin gastar rechazos (no cuenta en el resumen ni en las repeticiones)
+    $('.xclose',sh).onclick=()=>{
+      S.bot.rounds=(S.bot.rounds||[]).filter(x=>x.log!==entry.id);
+      entry.out='✖️ Quitada sin gastar rechazo';persist();renderLog();sfx.click();closeModal();
+    };
   },{dismiss:false,centered:true});
 }
 function askWho(res,entry){
