@@ -45,7 +45,8 @@ main{padding:10px 16px;max-width:900px;margin:0 auto}
 .grid.c1{grid-template-columns:1fr;max-width:400px;margin:0 auto}
 .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr 1fr}
 @media(min-width:760px){.grid.c3{grid-template-columns:repeat(3,1fr)}.grid.c4{grid-template-columns:repeat(4,1fr)}}
-.card{background:var(--card);border-radius:20px;padding:10px 10px 8px;min-width:0}
+.card{background:var(--card);border-radius:20px;padding:10px 10px 8px;min-width:0;overflow:hidden}
+html,body{overflow-x:hidden}
 .whead{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;min-height:30px}
 .wname{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px}
 .edit{border:0;background:var(--card2);color:var(--txt);width:32px;height:32px;border-radius:10px;font-size:15px;flex:none}
@@ -133,45 +134,62 @@ summary{color:var(--mut);cursor:pointer;padding:6px 0}
 .cblock .lbl{margin-top:10px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#fff;color:#1b1630;padding:10px 16px;border-radius:14px;font-weight:600;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:up .2s;max-width:90vw;text-align:center}
 .empty{text-align:center;color:var(--mut);padding:40px 0}
+/* ---------- móvil en vertical: ruletas una encima de otra y marcador compacto ---------- */
+@media (orientation:portrait) and (max-width:600px){
+  .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr;margin:0 auto}
+  .grid.c2{max-width:270px}
+  .grid.c3,.grid.c4{max-width:240px}
+  #score{gap:6px;margin-bottom:10px}
+  #score .sblock{display:flex;flex-wrap:wrap;gap:5px;padding:8px}
+  #score .shead{width:100%;margin:0 0 2px;font-size:14px}
+  #score .srow{border:0;padding:4px 8px;background:var(--card2);border-radius:10px;gap:6px;font-size:14px}
+  #score .srow .sname{flex:none;max-width:90px}
+  #score .sw{width:9px;height:9px;border-radius:3px}
+  #score .dot{width:7px;height:7px}
+  #score .dots{gap:2px;flex-wrap:nowrap}
+  #score .stats{font-size:13px;margin:0}
+}
 /* ---------- pantalla horizontal (móvil girado) ---------- */
 @media (orientation:landscape) and (max-height:560px){
-  :root{--wh:calc(100vh - 178px)}
-  @supports(height:100dvh){:root{--wh:calc(100dvh - 178px)}}
-  header{display:flex;align-items:center;gap:14px;padding:calc(6px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 6px calc(14px + env(safe-area-inset-left))}
+  :root{--wh:calc(100vh - 232px)}
+  @supports(height:100dvh){:root{--wh:calc(100dvh - 232px)}}
+  header{display:flex;align-items:center;gap:14px;padding:calc(5px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 5px calc(14px + env(safe-area-inset-left))}
   .top{margin:0;gap:12px;flex:none}
   #title{font-size:22px}
   .iconbtn{width:38px;height:38px}
   nav{flex:1;max-width:340px;margin:0 0 0 auto}
   .tab{padding:8px 4px}
-  main{max-width:none;padding:10px calc(14px + env(safe-area-inset-right)) 8px calc(14px + env(safe-area-inset-left))}
-  body{padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  main{max-width:none;padding:8px calc(14px + env(safe-area-inset-right)) 6px calc(14px + env(safe-area-inset-left))}
+  body{padding-bottom:calc(6px + env(safe-area-inset-bottom))}
   .grid{grid-template-columns:none!important;grid-auto-flow:column;justify-content:center;max-width:none!important;margin:0!important;gap:10px}
-  .card{padding:8px 10px 6px}
-  .whead{margin-bottom:6px;min-height:28px}
-  .result{margin-top:4px;min-height:26px;font-size:16px}
+  .card{padding:6px 10px 4px}
+  .whead{margin-bottom:4px;min-height:28px}
+  .result{margin-top:2px;min-height:24px;font-size:16px}
   .grid.c1 .card,.grid.c2 .card{width:calc(var(--wh) + 20px)}
-  .grid.c3 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 250px)/3))}
-  .grid.c4 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 260px)/4))}
-  #view-ruletas:not([hidden]){display:grid;grid-template-columns:1fr 140px;grid-template-rows:auto 1fr;grid-template-areas:"grid cnt" "grid spin";gap:10px;align-items:stretch}
-  #normalGrid{grid-area:grid;align-self:start}
-  #countSel{grid-area:cnt;margin:0;flex-wrap:wrap}
-  #countSel button{flex:1 0 40%}
-  .spin{margin:0;max-width:none;height:100%;max-height:220px;align-self:center;padding:10px;font-size:20px;letter-spacing:2px}
+  .grid.c3 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 150px)/3))}
+  .grid.c4 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 160px)/4))}
+  .spin{margin:0;max-width:none;width:100%;padding:12px;font-size:20px;letter-spacing:3px}
+  #view-ruletas:not([hidden]){display:grid;grid-template-columns:auto 1fr;grid-template-areas:"grid grid" "cnt spin";gap:8px 10px}
+  #normalGrid{grid-area:grid}
+  #countSel{grid-area:cnt;margin:0;width:180px}
   #spinNormal{grid-area:spin}
-  #botGame:not([hidden]){display:grid;grid-template-columns:minmax(150px,210px) 1fr 140px;grid-template-rows:1fr auto;grid-template-areas:"score grid spin" "score grid row";gap:10px}
-  #score{grid-area:score;margin:0;max-height:calc(100vh - 90px);overflow:auto;align-content:start}
+  #botGame:not([hidden]){display:grid;grid-template-columns:minmax(150px,210px) 1fr;grid-template-rows:1fr auto;grid-template-areas:"score grid" "row spin";gap:8px 10px}
+  #score{grid-area:score;margin:0;max-height:calc(100vh - 140px);overflow:auto;align-content:start;gap:6px}
   #score.two{grid-template-columns:1fr}
-  #botGrid{grid-area:grid;align-self:start}
+  #score .sblock{padding:8px 10px}
+  #score .srow{padding:3px 0;font-size:14px}
+  #botGrid{grid-area:grid}
   #spinBot{grid-area:spin}
-  #botGame>.row{grid-area:row;flex-direction:column;margin:0;gap:6px}
-  #botGame>.row .btn{width:100%;padding:9px 6px;font-size:13px}
-  #botGrid.c1 .card,#botGrid.c2 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 420px)/var(--n,1)))}
-  #botGrid.c2{--n:2}
+  #botGame>.row{grid-area:row;margin:0;gap:6px}
+  #botGame>.row .btn{padding:8px 4px;font-size:12px}
+  #botGrid.c1 .card{width:min(calc(var(--wh) + 20px),calc(100vw - 300px))}
+  #botGrid.c2 .card{width:min(calc(var(--wh) + 20px),calc((100vw - 320px)/2))}
   #botSetup .panel{max-width:640px;margin:0 auto}
   .sheet{max-height:92vh}
   .big{font-size:24px;margin:8px 0 4px}
   .btn.yes,.btn.no{padding:12px;font-size:20px}
 }
+.rep{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:999px;background:var(--acc);color:#1b1630;font-weight:700;animation:pop .4s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .toast{animation:none}
@@ -507,7 +525,7 @@ function startBot(){
     wheels.push({id:uid(),name:nm,max:c.rej,items:names.map((p,j)=>({id:uid(),text:p.slice(0,30),color:PALETTE[(j+i*5)%PALETTE.length],left:c.rej}))});
   }
   S.bot={wheels,done:0,rejected:0,spins:0,history:[],rounds:[]};
-  persist();sfx.start();renderBot();
+  persist();sfx.start();renderBot();window.scrollTo(0,0);
 }
 function dotsHtml(left,max){
   if(max===0)return'<span class="muted">sin rechazos</span>';
@@ -532,10 +550,16 @@ function spinBot(useMarks){
   });
 }
 function resChips(res){return`<div class="reslist">${res.map(r=>`<div class="rchip" style="--c:${r.item.color}"><small>${esc(r.wheel.name)}</small><b>${esc(r.item.text)}</b></div>`).join('')}</div>`}
+function repeatInfo(entry){
+  const b=S.bot,rd=(b.rounds||[]).find(x=>x.log===entry.id);if(!rd)return'';
+  const two=b.wheels.length>1,key=r=>(two?r.names.slice().sort((x,y)=>x.localeCompare(y,'es')):r.names).join(' + ').toLowerCase();
+  const k=key(rd),n=b.rounds.filter(x=>key(x)===k).length;
+  return n>=2?`<div class="rep">🔁 ${n}ª vez ${two?'juntos':'que sale'}</div>`:'';
+}
 function setRound(entry,out){const r=(S.bot.rounds||[]).find(x=>x.log===entry.id);if(r)r.out=out}
 function askCumple(res,entry){
   openModal(sh=>{
-    sh.innerHTML=`<div class="center">${resChips(res)}<h2 class="big">¿Se cumple?</h2>
+    sh.innerHTML=`<div class="center">${resChips(res)}${repeatInfo(entry)}<h2 class="big">¿Se cumple?</h2>
       <div class="row"><button class="btn yes">Sí</button><button class="btn no">No</button></div></div>`;
     $('.yes',sh).onclick=()=>{
       S.bot.done++;entry.out='✅ Cumplido';setRound(entry,'si');persist();renderLog();renderScore();
