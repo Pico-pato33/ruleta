@@ -238,7 +238,7 @@ function vibrate(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 /* ---------- estado ---------- */
 function mkWheel(name,texts){return{id:uid(),name,items:texts.map((t,i)=>({id:uid(),text:t,color:PALETTE[i%PALETTE.length]}))}}
 function defaultState(){return{
-  tab:'ruletas',count:1,muted:false,log:[],bot:null,pairs:[],pairsOn:true,lastExport:0,
+  tab:'ruletas',count:1,games:[],muted:false,log:[],bot:null,pairs:[],pairsOn:true,lastExport:0,
   wheels:[
     mkWheel('Ruleta 1',['Sí','No','Quizás','Otra vez']),
     mkWheel('Ruleta 2',['Rojo','Azul','Verde','Amarillo']),
@@ -463,7 +463,9 @@ function startBot(){
     if(names.length<2){toast(`Pon al menos 2 jugadores en ${nm}`);return}
     wheels.push({id:uid(),name:nm,max:c.rej,items:names.map((p,j)=>({id:uid(),text:p.slice(0,30),color:PALETTE[(j+i*5)%PALETTE.length],left:c.rej}))});
   }
-  S.bot={wheels,done:0,rejected:0,spins:0,history:[],rounds:[]};
+  const game={id:uid(),start:Date.now(),end:null};
+  S.games=(S.games||[]).concat(game).slice(-200);
+  S.bot={wheels,done:0,rejected:0,spins:0,history:[],rounds:[],gid:game.id};
   persist();sfx.start();renderBot();window.scrollTo(0,0);
 }
 function dotsHtml(left,max){
@@ -495,7 +497,7 @@ function repeatInfo(entry){
   const k=key(rd),n=b.rounds.filter(x=>key(x)===k).length;
   return n>=2?`<div class="rep">🔁 ${n}ª vez ${two?'juntos':'que sale'}</div>`:'';
 }
-function setRound(entry,out){const r=(S.bot.rounds||[]).find(x=>x.log===entry.id);if(r)r.out=out}
+function setRound(entry,out){entry.r=out;const r=(S.bot.rounds||[]).find(x=>x.log===entry.id);if(r)r.out=out}
 function askCumple(res,entry){
   openModal(sh=>{
     sh.innerHTML=`<button class="xclose" aria-label="Quitar">✕</button><div class="center" style="padding-top:22px">${resChips(res)}${repeatInfo(entry)}<h2 class="big">¿Se cumple?</h2>
@@ -508,7 +510,7 @@ function askCumple(res,entry){
     // ✕: quita esta pareja sin gastar rechazos (no cuenta en el resumen ni en las repeticiones)
     $('.xclose',sh).onclick=()=>{
       S.bot.rounds=(S.bot.rounds||[]).filter(x=>x.log!==entry.id);
-      entry.out='✖️ Quitada sin gastar rechazo';persist();renderLog();sfx.click();closeModal();
+      entry.out='✖️ Quitada sin gastar rechazo';entry.r='x';persist();renderLog();sfx.click();closeModal();
     };
   },{dismiss:false,centered:true});
 }
@@ -538,7 +540,7 @@ $('#bUndo').onclick=()=>{
   const last=b.history.pop(),w=b.wheels.find(x=>x.id===last.wid),p=w&&w.items.find(x=>x.id===last.pid);
   if(p){p.left=Math.min(w.max,p.left+1)}
   b.rejected=Math.max(0,b.rejected-1);
-  const e=S.log.find(x=>x.id===last.log);if(e)e.out='↩️ Rechazo deshecho';
+  const e=S.log.find(x=>x.id===last.log);if(e){e.out='↩️ Rechazo deshecho';e.r=null}
   const rd=(b.rounds||[]).find(x=>x.log===last.log);if(rd)rd.out=null;
   persist();renderScore();renderLog();sfx.click();toast(p?`Rechazo devuelto a ${p.text}`:'Rechazo deshecho');
 };
@@ -563,6 +565,7 @@ function togetherHtml(b){
 }
 function showSummary(){
   const b=S.bot;
+  const gm=(S.games||[]).find(x=>x.id===b.gid);if(gm&&!gm.end){gm.end=Date.now();persist()}
   openModal(sh=>{
     sh.innerHTML=`<h2 class="center">🏁 Fin de la partida</h2>
       <div class="stats" style="font-size:16px;margin:8px 0 6px">🎡 ${b.spins} tiradas · ✅ ${b.done} cumplidos · ❌ ${b.rejected} rechazados</div>
@@ -582,6 +585,7 @@ function showSummary(){
 /* ---------- registro ---------- */
 function addLog(mode,res,out){
   const e={id:uid(),t:Date.now(),mode,res:res.map(r=>({w:r.wheel.name,t:r.item.text,c:r.item.color})),out:out||''};
+  if(S.bot&&S.bot.gid)e.g=S.bot.gid;
   S.log.unshift(e);if(S.log.length>500)S.log.length=500;
   persist();renderLog();return e;
 }
@@ -597,17 +601,31 @@ function renderLog(){
     <div class="lres">${e.res.map(r=>`<span><span class="sw" style="background:${esc(r.c)}"></span>${e.res.length>1?`<small>${esc(r.w)}:</small>`:''}<b>${esc(r.t)}</b></span>`).join('')}</div>
     ${e.out?`<div class="lout">${esc(e.out)}</div>`:''}</div>`).join('');
 }
+// Formato para Notas:
+// 23/11 empieza partida: 18:45 termina 20:00
+// Ana - Luis 4 veces 1 ✅ 3 ❌
+function hm(t){return new Date(t).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
+function dm(t){const d=new Date(t);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
+function outcome(e){if(e.r!==undefined)return e.r;const o=e.out||'';return o.startsWith('✅')?'si':o.startsWith('❌')?'no':o.startsWith('✖')?'x':null}
 function exportText(list){
-  const ord=list.slice().sort((a,b)=>a.t-b.t);
-  let out='🎡 Registro de la ruleta\n',day='';
-  ord.forEach(e=>{
-    const d=new Date(e.t);
-    let ds=d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});ds=ds.charAt(0).toUpperCase()+ds.slice(1);
-    if(ds!==day){day=ds;out+=`\n${ds}\n`}
-    const hm=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-    out+=`• ${hm} 🎡 ${e.res.map(r=>(e.res.length>1?r.w+': ':'')+r.t).join(' | ')}${e.out?' → '+e.out:''}\n`;
+  const groups=new Map();
+  list.slice().sort((a,b)=>a.t-b.t).forEach(e=>{const k=e.g||('old-'+dm(e.t));if(!groups.has(k))groups.set(k,[]);groups.get(k).push(e)});
+  const out=[];
+  groups.forEach((es,k)=>{
+    const g=(S.games||[]).find(x=>x.id===k);
+    const start=g?g.start:es[0].t,end=g?g.end:es[es.length-1].t;
+    const pairs=new Map();
+    es.forEach(e=>{
+      const r=outcome(e);if(r==='x')return;
+      const names=e.res.map(x=>String(x.t).trim());
+      const key=names.slice().sort((a,b)=>a.localeCompare(b,'es')).join('|').toLowerCase();
+      const p=pairs.get(key)||{label:names.join(' - '),n:0,si:0,no:0};
+      p.n++;if(r==='si')p.si++;if(r==='no')p.no++;pairs.set(key,p);
+    });
+    const lines=[...pairs.values()].sort((a,b)=>b.n-a.n).map(p=>`${p.label} ${p.n} ${p.n===1?'vez':'veces'} ${p.si} ✅ ${p.no} ❌`);
+    out.push([`${dm(start)} empieza partida: ${hm(start)} termina ${end?hm(end):'(en curso)'}`,...lines].join('\n'));
   });
-  return out;
+  return out.join('\n\n');
 }
 // Registro escondido: se abre tocando dos veces seguidas el botón de sonido
 function openLog(){
@@ -631,7 +649,7 @@ function openLog(){
     let armed=false;
     $('#lClear',sh).onclick=e=>{
       if(!armed){armed=true;e.currentTarget.textContent='¿Seguro? Toca otra vez para borrar';return}
-      S.log=[];S.lastExport=0;persist();closeModal();toast('Registro borrado');
+      S.log=[];S.lastExport=0;S.games=(S.games||[]).filter(g=>S.bot&&g.id===S.bot.gid);persist();closeModal();toast('Registro borrado');
     };
   });
 }
