@@ -203,22 +203,10 @@ summary{color:var(--mut);cursor:pointer;padding:6px 0}
     <h1 id="title"><span id="pDot"></span>Ruleta</h1>
     <button class="iconbtn" id="muteBtn" aria-label="Sonido">🔊</button>
   </div>
-  <nav>
-    <button class="tab lock" data-t="ruletas">Ruletas</button>
-    <button class="tab lock" data-t="botella">Botella</button>
-  </nav>
 </header>
 
 <main>
-  <section id="view-ruletas">
-    <div class="seg lock" id="countSel">
-      <button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button>
-    </div>
-    <div class="grid c1" id="normalGrid"></div>
-    <button class="spin lock" id="spinNormal">GIRAR</button>
-  </section>
-
-  <section id="view-botella" hidden>
+  <section id="view-botella">
     <div id="botSetup"></div>
     <div id="botGame" hidden>
       <div class="score" id="score"></div>
@@ -262,7 +250,7 @@ function defaultState(){return{
 const KEY='ruleta_app_v1';
 let S=defaultState();
 try{const raw=localStorage.getItem(KEY);if(raw){const l=JSON.parse(raw);S=Object.assign(defaultState(),l)}}catch(e){}
-if(S.tab!=='ruletas'&&S.tab!=='botella')S.tab='ruletas';
+S.tab='botella'; // solo queda el modo de juego
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 const rt={};          // datos en pantalla por ruleta (canvas, rotación…)
@@ -429,59 +417,8 @@ function spinWheels(wheels,useMarks,done){
   requestAnimationFrame(frame);
 }
 
-/* ---------- vista Ruletas ---------- */
-function renderNormal(){
-  $$('#countSel button').forEach(b=>b.classList.toggle('on',+b.dataset.n===S.count));
-  const g=$('#normalGrid');g.className='grid c'+S.count;g.innerHTML='';
-  S.wheels.slice(0,S.count).forEach(w=>g.appendChild(wheelCard(w,true,spinNormal)));
-  requestAnimationFrame(()=>{if(S.tab==='ruletas')S.wheels.slice(0,S.count).forEach(drawWheel)});
-}
-function spinNormal(useMarks){
-  spinWheels(S.wheels.slice(0,S.count),!!useMarks,res=>addLog('Ruletas',res,''));
-}
 // mitad derecha del botón GIRAR = usa los gajos marcados; mitad izquierda = normal
 function rightHalf(e){const r=e.currentTarget.getBoundingClientRect();return e.clientX>r.left+r.width/2}
-$$('#countSel button').forEach(b=>b.onclick=()=>{S.count=+b.dataset.n;persist();sfx.click();renderNormal()});
-$('#spinNormal').onclick=e=>spinNormal(rightHalf(e));
-
-function openEditor(w){
-  openModal(sh=>{
-    sh.innerHTML=`<h2>Editar ruleta</h2>
-      <label class="lbl">Nombre</label><input class="inp" id="eName" maxlength="30" value="${esc(w.name)}">
-      <label class="lbl">Apartados (${w.items.length})</label><div id="eItems"></div>
-      <button class="btn block" id="eAdd">+ Añadir apartado</button>
-      <details><summary>Pegar una lista</summary>
-        <textarea class="inp" id="ePaste" placeholder="Un apartado por línea"></textarea>
-        <button class="btn block" id="ePasteBtn">Añadir de la lista</button></details>
-      <div class="row"><button class="btn" id="eAuto">🎨 Colores auto</button><button class="btn danger" id="eClear">Vaciar</button></div>
-      <button class="btn primary block" id="eDone">Listo</button>`;
-    const list=$('#eItems',sh);
-    const changed=()=>{persist();drawWheel(w);$('.lbl:nth-of-type(2)',sh).textContent=`Apartados (${w.items.length})`};
-    const refresh=()=>{
-      list.innerHTML='';
-      if(!w.items.length)list.innerHTML='<p class="muted">Sin apartados todavía.</p>';
-      w.items.forEach((it,i)=>{
-        const row=h(`<div class="irow"><input type="color" value="${esc(it.color)}"><input class="inp" maxlength="40" value="${esc(it.text)}" placeholder="Apartado ${i+1}"><button class="x" aria-label="Quitar">✕</button></div>`);
-        const ins=$$('input',row);
-        ins[0].oninput=()=>{it.color=ins[0].value;changed()};
-        ins[1].oninput=()=>{it.text=ins[1].value;changed()};
-        $('.x',row).onclick=()=>{w.items.splice(i,1);refresh();changed()};
-        list.appendChild(row);
-      });
-    };
-    refresh();
-    $('#eName',sh).oninput=e=>{w.name=e.target.value;persist()};
-    $('#eAdd',sh).onclick=()=>{w.items.push({id:uid(),text:'',color:PALETTE[w.items.length%PALETTE.length]});refresh();changed();const ins=$$('.irow .inp',list);ins.length&&ins[ins.length-1].focus()};
-    $('#ePasteBtn',sh).onclick=()=>{
-      const lines=$('#ePaste',sh).value.split('\n').map(s=>s.trim()).filter(Boolean);
-      lines.forEach(t=>w.items.push({id:uid(),text:t.slice(0,40),color:PALETTE[w.items.length%PALETTE.length]}));
-      $('#ePaste',sh).value='';refresh();changed();if(lines.length)toast(`${lines.length} apartados añadidos`);
-    };
-    $('#eAuto',sh).onclick=()=>{w.items.forEach((it,i)=>it.color=PALETTE[i%PALETTE.length]);refresh();changed()};
-    $('#eClear',sh).onclick=()=>{w.items=[];refresh();changed()};
-    $('#eDone',sh).onclick=closeModal;
-  },{onClose:()=>{if(!w.name.trim())w.name='Ruleta';persist();renderNormal()}});
-}
 
 /* ---------- vista Botella ---------- */
 function renderBot(){
@@ -495,7 +432,7 @@ function renderBot(){
 }
 function renderSetup(){
   const L=S.botLast,el=$('#botSetup');
-  el.innerHTML=`<div class="panel"><h2>🍾 Modo Botella</h2>
+  el.innerHTML=`<div class="panel"><h2>Nueva partida</h2>
     <p class="muted">Elige 1 o 2 ruletas, pon los jugadores de cada una y cuántos rechazos tiene cada persona.</p>
     <div class="seg" id="bN"><button data-n="1">1 ruleta</button><button data-n="2">2 ruletas</button></div>
     <div id="bCfg"></div>
@@ -546,7 +483,7 @@ function spinBot(useMarks){
   const b=S.bot;if(!b)return;
   spinWheels(b.wheels,!!useMarks,res=>{
     b.spins++;persist();
-    const entry=addLog('Botella',res,'⏳ Pendiente');
+    const entry=addLog('Ruleta',res,'⏳ Pendiente');
     (b.rounds=b.rounds||[]).push({log:entry.id,names:res.map(r=>String(r.item.text).trim()),out:null});persist();
     setTimeout(()=>askCumple(res,entry),500);
   });
@@ -668,7 +605,7 @@ function exportText(list){
     let ds=d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});ds=ds.charAt(0).toUpperCase()+ds.slice(1);
     if(ds!==day){day=ds;out+=`\n${ds}\n`}
     const hm=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-    out+=`• ${hm} ${e.mode==='Botella'?'🍾':'🎡'} ${e.res.map(r=>(e.res.length>1?r.w+': ':'')+r.t).join(' | ')}${e.out?' → '+e.out:''}\n`;
+    out+=`• ${hm} 🎡 ${e.res.map(r=>(e.res.length>1?r.w+': ':'')+r.t).join(' | ')}${e.out?' → '+e.out:''}\n`;
   });
   return out;
 }
@@ -816,7 +753,7 @@ function renderMute(){$('#muteBtn').textContent=S.muted?'🔇':'🔊'}
 let lastMute=0;
 $('#muteBtn').onclick=()=>{
   const n=Date.now();S.muted=!S.muted;persist();renderMute();
-  if(n-lastMute<400){lastMute=0;openLog();return}
+  if(n-lastMute<200){lastMute=0;openLog();return}
   lastMute=n;sfx.click();
 };
 
@@ -824,7 +761,7 @@ let rsT=null;
 window.addEventListener('resize',()=>{clearTimeout(rsT);rsT=setTimeout(redrawVisible,120)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(redrawVisible);
 
-renderMute();renderPDot();renderNormal();renderBot();renderLog();setTab(S.tab);
+renderMute();renderPDot();renderBot();renderLog();setTab('botella');
 })();
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}</script>
