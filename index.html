@@ -191,6 +191,9 @@ summary{color:var(--mut);cursor:pointer;padding:6px 0}
 }
 .sheet{position:relative}
 .xclose{position:absolute;top:12px;right:12px;width:38px;height:38px;border:0;border-radius:12px;background:var(--card2);color:var(--mut);font-size:17px;z-index:1}
+.cblock .stepper{gap:8px}
+.cblock .stepper button{width:36px;height:36px;font-size:20px}
+.cblock .stepper b{min-width:24px;font-size:18px}
 .rep{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:999px;background:var(--acc);color:#1b1630;font-weight:700;animation:pop .4s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
@@ -214,6 +217,7 @@ summary{color:var(--mut);cursor:pointer;padding:6px 0}
       <button class="spin lock" id="spinBot">GIRAR</button>
       <div class="row">
         <button class="btn lock" id="bUndo">↩️ Deshacer rechazo</button>
+        <button class="btn lock" id="bRej">✏️ Rechazos</button>
         <button class="btn danger lock" id="bEnd">Terminar partida</button>
       </div>
     </div>
@@ -477,7 +481,7 @@ function renderScore(){
   const b=S.bot,el=$('#score');
   el.className='score'+(b.wheels.length===2?' two':'');
   el.innerHTML=b.wheels.map(w=>`<div class="sblock"><div class="shead">${esc(w.name)} <span class="muted">· ${w.max} rechazo${w.max===1?'':'s'} c/u</span></div>${
-    w.items.map(p=>`<div class="srow${p.left===0&&w.max>0?' out':''}"><span class="sw" style="background:${p.color}"></span><span class="sname">${esc(p.text)}</span><span class="dots">${dotsHtml(p.left,w.max)}</span></div>`).join('')
+    w.items.map(p=>`<div class="srow${p.left===0&&tot(p,w)>0?' out':''}"><span class="sw" style="background:${p.color}"></span><span class="sname">${esc(p.text)}</span><span class="dots">${dotsHtml(p.left,tot(p,w))}</span></div>`).join('')
   }</div>`).join('')+`<div class="stats" style="grid-column:1/-1">✅ ${b.done} cumplidos · ❌ ${b.rejected} rechazados</div>`;
   $('#bUndo').disabled=!b.history.length;
 }
@@ -535,10 +539,30 @@ function askWho(res,entry){
   },{dismiss:false,centered:true});
 }
 $('#spinBot').onclick=e=>spinBot(rightHalf(e));
+// rechazos totales de cada persona (puede cambiarse a mitad de partida)
+function tot(p,w){return p.tot!=null?p.tot:w.max}
+$('#bRej').onclick=()=>{
+  const b=S.bot;if(!b)return;
+  openModal(sh=>{
+    const draw=()=>{
+      sh.innerHTML=`<h2>Rechazos que quedan</h2>${b.wheels.map((w,wi)=>`<div class="cblock"><div class="shead">${esc(w.name)}</div>${
+        w.items.map((p,pi)=>`<div class="srow"><span class="sw" style="background:${p.color}"></span><span class="sname">${esc(p.text)}</span><div class="stepper"><button data-w="${wi}" data-p="${pi}" data-d="-1">−</button><b>${p.left}</b><button data-w="${wi}" data-p="${pi}" data-d="1">+</button></div></div>`).join('')
+      }</div>`).join('')}<button class="btn primary block" id="rjOk">Listo</button>`;
+      $$('.stepper button',sh).forEach(bt=>bt.onclick=()=>{
+        const w=b.wheels[+bt.dataset.w],p=w.items[+bt.dataset.p],d=+bt.dataset.d;
+        const nl=Math.max(0,Math.min(30,p.left+d));if(nl===p.left)return;
+        p.tot=Math.max(0,tot(p,w)+(nl-p.left));p.left=nl; // lo ya gastado no cambia
+        persist();renderScore();sfx.click();draw();
+      });
+      $('#rjOk',sh).onclick=closeModal;
+    };
+    draw();
+  });
+};
 $('#bUndo').onclick=()=>{
   const b=S.bot;if(!b||!b.history.length)return;
   const last=b.history.pop(),w=b.wheels.find(x=>x.id===last.wid),p=w&&w.items.find(x=>x.id===last.pid);
-  if(p){p.left=Math.min(w.max,p.left+1)}
+  if(p){p.left=Math.min(tot(p,w),p.left+1)}
   b.rejected=Math.max(0,b.rejected-1);
   const e=S.log.find(x=>x.id===last.log);if(e){e.out='↩️ Rechazo deshecho';e.r=null}
   const rd=(b.rounds||[]).find(x=>x.log===last.log);if(rd)rd.out=null;
@@ -570,7 +594,7 @@ function showSummary(){
     sh.innerHTML=`<h2 class="center">🏁 Fin de la partida</h2>
       <div class="stats" style="font-size:16px;margin:8px 0 6px">🎡 ${b.spins} tiradas · ✅ ${b.done} cumplidos · ❌ ${b.rejected} rechazados</div>
       ${b.wheels.map(w=>`<div class="cblock"><div class="shead">${esc(w.name)}</div>${
-        w.items.slice().sort((x,y)=>(w.max-y.left)-(w.max-x.left)).map(p=>{const used=w.max-p.left;return`<div class="srow"><span class="sw" style="background:${p.color}"></span><span class="sname">${esc(p.text)}</span><span class="muted">${used}/${w.max} usados${w.max>0&&p.left===0?' 🔥':''}</span></div>`}).join('')
+        w.items.slice().sort((x,y)=>(tot(y,w)-y.left)-(tot(x,w)-x.left)).map(p=>{const T=tot(p,w),used=T-p.left;return`<div class="srow"><span class="sw" style="background:${p.color}"></span><span class="sname">${esc(p.text)}</span><span class="muted">${used}/${T} usados${T>0&&p.left===0?' 🔥':''}</span></div>`}).join('')
       }</div>`).join('')}
       ${togetherHtml(b)}
       <button class="btn primary block" id="sOk">Nueva partida</button>`;
